@@ -16,7 +16,7 @@ from sympy.printing.pretty.stringpict import prettyForm
 
 from sympy.physics.quantum.hilbert import ComplexSpace
 from sympy.physics.quantum.state import Ket, Bra, State
-
+from sympy.physics.quantum.tensorproduct import TensorProduct
 from sympy.physics.quantum.qexpr import QuantumError
 from sympy.physics.quantum.represent import represent
 from sympy.physics.quantum.matrixutils import (
@@ -33,7 +33,9 @@ __all__ = [
     'measure_all',
     'measure_partial',
     'measure_partial_oneshot',
-    'measure_all_oneshot'
+    'measure_all_oneshot',
+    'nqubits',
+    'qubits',
 ]
 
 #-----------------------------------------------------------------------------
@@ -412,7 +414,6 @@ def qubit_to_matrix(qubit, format='sympy'):
     This function is the inverse of ``matrix_to_qubit`` and is a shorthand
     for ``represent(qubit)``.
     """
-    from sympy.physics.quantum.gate import Z
     return represent(qubit, format=format)
 
 
@@ -679,3 +680,64 @@ def measure_all_oneshot(qubit, format='sympy'):
         raise NotImplementedError(
             "This function can't handle non-sympy matrix formats yet"
         )
+
+
+def qubits(s):
+    """Create a tuple of Qubit objects given a single string.
+
+    This works like ``sympy.symbols``, but creates ``Qubit`` objects instead
+    of symbols.
+
+    Parameters
+    ----------
+    s : str
+        A string of the form "00 11" will be translated into
+        ``(Qubit('00'), Qubit('11'))``.
+
+    Examples
+    --------
+
+        >>> from sympy.physics.quantum.qubit import qubits
+        >>> qubits('00 11')
+        (|00>, |11>)
+    """
+    if not isinstance(s, basestring):
+        raise TypeError('Expected string, got: %r' % s)
+    return tuple([Qubit(part) for part in s.split(' ')])
+
+
+def nqubits(e):
+    """Search through an expression to find the number of qubits it has.
+
+    Parameters
+    ----------
+    e : Expr
+        The expression to find the number of qubits for.
+
+    Examples
+    --------
+
+        >>> from sympy.physics.quantum.qubit import nqubits, Qubit
+        >>> from sympy.physics.quantum.tensorproduct import TensorProduct
+
+        >>> nqubits(Qubit('00'))
+        2
+        >>> nqubits(2*Qubit('00'))
+        2
+        >>> nqubits(Qubit('00') + Qubit('11'))
+        2
+        >>> nqubits(TensorProduct(Qubit('00'),Qubit('11')))
+        4
+    """
+    if isinstance(e, Qubit):
+        return e.nqubits
+    elif isinstance(e, Add):
+        return max(nqubits(arg) for arg in e.args)
+    elif isinstance(e, TensorProduct):
+        return sum(nqubits(arg) for arg in e.args)
+    elif isinstance(e, Mul):
+        for arg in reversed(e.args):
+            n = nqubits(arg)
+            if n > 0:
+                return n
+    return 0

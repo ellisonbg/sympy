@@ -3,6 +3,7 @@ from sympy.physics.quantum.gate import *
 from sympy.physics.quantum.qft import *
 from sympy.physics.quantum.represent import *
 from sympy.physics.quantum.applyops import *
+from sympy.physics.quantum.tensorproduct import TensorProduct
 from sympy import symbols, Rational
 from sympy.core.numbers import *
 from sympy.functions.elementary import *
@@ -121,3 +122,14 @@ def test_measure_all():
     state2 = Qubit('11')/sqrt(5) + 2*Qubit('00')/sqrt(5)
     assert sorted(measure_all(state2)) == sorted([(Qubit('11'), Rational(1,5)), \
            (Qubit('00'), Rational(4,5))])
+
+def test_nqubits():
+    assert nqubits(Qubit('00')) == 2
+    assert nqubits(Integer(2)*Qubit('00')) == 2
+    assert nqubits(Integer(2)*(Qubit('00') + Qubit('11'))) == 2
+    assert nqubits(TensorProduct(Qubit('0'),Qubit('00'))) == 3
+    assert nqubits(Integer(2)) == 0
+
+
+def test_qubit():
+    assert qubits('00 11') == (Qubit('00'), Qubit('11'))
