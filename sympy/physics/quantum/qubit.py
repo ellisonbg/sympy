@@ -7,6 +7,7 @@ Todo:
 """
 
 import math
+from copy import copy
 
 from sympy import Integer, log, Mul, Add, Pow, conjugate
 from sympy.core.basic import sympify
@@ -741,3 +742,19 @@ def nqubits(e):
             if n > 0:
                 return n
     return 0
+
+
+def _tp_indices(target, nq):
+    """In backwards order."""
+    nq = list(reversed(nq))
+    cnq = copy(nq)
+    nterms = len(nq)
+    for i in range(1,nterms):
+        cnq[i] += cnq[i-1]
+    dq = [i-target for i in cnq]
+    previous = 0
+    for i in range(nterms):
+        if dq[i] > 0:
+            return i, target-previous
+        previous += nq[i]
+    raise IndexError('Out of range...')

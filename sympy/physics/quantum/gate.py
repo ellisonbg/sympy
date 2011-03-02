@@ -10,6 +10,8 @@ Medium Term Todo:
 * Get multi-target UGates plotting properly.
 * Get UGate to work with either sympy/numpy matrices and output either
   format. This should also use the matrix slots.
+* Currently nqubits is an int, but targets and controls are tuples of Integers.
+  We need to probably do something more consistent in this respect.
 """
 
 from itertools import chain
@@ -22,6 +24,7 @@ from sympy.utilities.iterables import all
 from sympy.physics.quantum.qexpr import QuantumError
 from sympy.physics.quantum.hilbert import ComplexSpace
 from sympy.physics.quantum.operator import UnitaryOperator
+from sympy.physics.quantum.tensorproduct import TensorProduct
 from sympy.physics.quantum.matrixutils import (
     matrix_tensor_product, matrix_eye
 )
@@ -512,6 +515,15 @@ class OneQubitGate(Gate):
             self.gate_name_plot,
             gate_idx, int(self.targets[0])
         )
+
+    def _apply_operator_TensorProduct(self, tp, **options):
+        from sympy.physics.quantum.qubit import _tp_indices, nqubits
+        qubits = [nqubits(arg) for arg in tp.args]
+        target = int(self.targets[0])
+        block, newtarget = _tp_indices(target, qubits)
+        newgate = self.__class__(newtarget)
+        result = newgate._apply_operator_Qubit(tp.args[block])
+        return TensorProduct(*(tp.args[:block] + (result,) + tp.args[block+1:]))
 
 
 class TwoQubitGate(Gate):

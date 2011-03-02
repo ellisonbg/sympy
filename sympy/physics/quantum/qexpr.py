@@ -2,6 +2,7 @@
 from sympy import Expr, sympify, Symbol, Matrix
 from sympy.printing.pretty.stringpict import prettyForm
 from sympy.core.containers import Tuple
+from sympy.core.decorators import _sympifyit, call_highest_priority
 
 from sympy.physics.quantum.matrixutils import (
     numpy_ndarray, scipy_sparse_matrix,
@@ -67,6 +68,10 @@ class QExpr(Expr):
 
     # The separator used in printing the label.
     _label_separator = u''
+
+    # Set a higher priority than Expr so QExpr.__mod__ is called.
+    _op_priority = 100.0
+
 
     def __new__(cls, *args, **old_assumptions):
         """Construct a new quantum object.
@@ -268,6 +273,20 @@ class QExpr(Expr):
                     return rewritten
 
         return self
+
+    @_sympifyit('other', NotImplemented)
+    @call_highest_priority('__rmod__')
+    def __mod__(self, other):
+        """Implement TensorProduct using the ``%`` operator."""
+        from sympy.physics.quantum.tensorproduct import TensorProduct
+        return TensorProduct(self, other)
+
+    @_sympifyit('other', NotImplemented)
+    @call_highest_priority('__mod__')
+    def __rmod__(self, other):
+        """Implement TensorProduct using the ``%`` operator."""
+        from sympy.physics.quantum.tensorproduct import TensorProduct
+        return TensorProduct(other, self)
 
     #-------------------------------------------------------------------------
     # Represent

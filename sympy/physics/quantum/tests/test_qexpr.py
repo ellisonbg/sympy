@@ -1,6 +1,7 @@
 from sympy import Symbol, Integer
 from sympy.physics.quantum.qexpr import QExpr
 from sympy.physics.quantum.hilbert import HilbertSpace
+from sympy.physics.quantum.tensorproduct import TensorProduct
 
 x = Symbol('x')
 y = Symbol('y')
@@ -34,3 +35,25 @@ def test_qexpr_subs():
     q1 = QExpr(x,y)
     assert q1.subs(x, y) == QExpr(y,y)
     assert q1.subs({x:1,y:2}) == QExpr(1,2)
+
+
+def test_qexpr_tensorproduct():
+    a = QExpr(0)
+    b = QExpr(1)
+    assert a%b == TensorProduct(a,b)
+    assert 2*a%b == 2*TensorProduct(a,b)
+
+
+# This fails because Number.__mod__ does not use _op_priority.
+def test_qexpr_tensorproduct_number():
+    a = QExpr(0)
+    assert Integer(2)%a == 2*a
+
+
+# This fails because TensorProduct does not flatten.
+def test_qexpr_tensorproduct_triple():
+    a = QExpr(0)
+    b = QExpr(1)
+    c = QExpr(2)
+    assert a%b%c == TensorProduct(a,b,c)
+    assert Integer(2)*a%b%c == 2*TensorProduct(a,b,c)
