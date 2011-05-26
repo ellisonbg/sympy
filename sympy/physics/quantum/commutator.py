@@ -1,6 +1,6 @@
 """The commutator: [A,B] = A*B - B*A."""
 
-from sympy import S, Expr, Mul, Add
+from sympy import S, Expr, Mul, Add, Pow
 from sympy.printing.pretty.stringpict import prettyForm
 
 from sympy.physics.quantum.qexpr import split_commutative_parts
@@ -9,7 +9,8 @@ from sympy.physics.quantum.operator import Operator
 
 
 __all__ = [
-    'Commutator'
+    'Commutator',
+    'commutator_sort'
 ]
 
 #-----------------------------------------------------------------------------
@@ -197,4 +198,77 @@ class Commutator(Expr):
     def _latex(self, printer, *args):
         return "\\left[%s,%s\\right]" % tuple([
             printer._print(arg, *args) for arg in self.args])
+
+def commutator_sort(e, compare=None):
+    """Sort a quantum expression, taking commutators into account.
+
+    This function will sort Operators using sympy's compare function or a
+    custom compare function passed in as a keyword argument. The following
+    rules are used for sorting (assume that A and B are Operators and that
+    B > A):
+
+    * If [A,B] = 0, then B*A will be replace by A*B.
+    * If [A,B] = c (a scalar), then B*A => A*B - c
+
+    This logic is repeated for all Operators until the expression no longer
+    changes.
+
+    This function can be used to implement normal ordering used in second
+    quantization.
+
+    Parameters
+    ==========
+    e : Expr
+        The expression to sort.
+    compare : callable
+        A function to be used for comparing Operators. It should have a
+        signature compare(x,y) and return -1 if x<y, 0 if x==y, +1 if x>y.
+
+    Examples
+    ========
+
+        >>> from sympy import S
+        >>> from sympy.physics.quantum import Commutator, Operator
+        >>> from sympy.physics.quantum import commutator_sort
+        >>> class A(Operator):
+        ...     def _eval_commutator_B(self, other):
+        ...         return S(2)
+        >>> class B(Operator): pass
+
+        >>> a = A('a'); b = B('b')
+
+        >>> commutator_sort(b*a)
+        2 + a*b
+
+        >>> commutator_sort(b**2*a)
+        a*b**2 + 4*b
+    """
+
+    e = e.expand()
+
+    # Make sure we have an Add or Mul.
+    if isinstance(e, Add):
+        return sum(commutator_sort(t) for t in e.args)
+    if isinstance(e, Pow):
+        return commutator_sort(e.base)**e.exp
+    if not isinstance(e, Mul):
+        return e
+
+    op_atoms = e.atoms(Operator)
+    subslist = []
+    for ai in op_atoms:
+        for aj in op_atoms:
+            if compare is None:
+                test = ai.compare(aj)
+            else:
+                test = compare(ai, aj)
+            if test > 0:
+                comm = Commutator(ai,aj).doit()
+                if comm.is_commutative:
+                    subslist.append((ai*aj,aj*ai-comm))
+    newe = e.subs(subslist)
+    if e == newe:
+        return e
+    else:
+        return commutator_sort(newe, compare=compare)
 
