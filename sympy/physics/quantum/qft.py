@@ -19,6 +19,7 @@ from sympy.functions import sqrt
 
 from sympy.physics.quantum.qapply import qapply
 from sympy.physics.quantum.qexpr import QuantumError, QExpr
+from sympy.physics.quantum.matrixutils import to_numpy, to_scipy_sparse
 from sympy.matrices import eye
 from sympy.physics.quantum.tensorproduct import matrix_tensor_product
 
@@ -83,9 +84,15 @@ class RkGate(OneQubitGate):
         return r'$%s_%s$' % (self.gate_name_latex, str(self.k))
 
     def get_target_matrix(self, format='sympy'):
+        mat = Matrix([[1, 0], [0, exp(Integer(2)*pi*I/(Integer(2)**self.k))]])
         if format == 'sympy':
-            return Matrix([[1, 0], [0, exp(Integer(2)*pi*I/(Integer(2)**self.k))]])
-        raise NotImplementedError(
+            return mat
+        elif format == 'numpy':
+            return to_numpy(mat)
+        elif format == 'scipy.sparse':
+            return to_scipy_sparse(mat)
+        else:
+            raise NotImplementedError(
             'Invalid format for the R_k gate: %r' % format)
 
 
